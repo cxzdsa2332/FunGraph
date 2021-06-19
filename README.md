@@ -55,9 +55,7 @@ pheno_df <- merge(get_data(ck_df),get_data(salt_df),by='id')
 
 #geno_with_pheno
 
-geno_df <- geno_df[,c(1:3,sapply(1:nrow(pheno_df),
-
-                                 function(c)which(as.character(pheno_df$id)[c]==colnames(geno_df))))]
+geno_df <- geno_df[,c(1:3,sapply(1:nrow(pheno_df),function(c)which(as.character(pheno_df$id)[c]==colnames(geno_df))))]
 
 #2.run biFunMap-------------------------------------------------------------------------------------------------
 
