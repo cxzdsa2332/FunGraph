@@ -10,7 +10,7 @@ The example data and scripts only to demonstrate the general framework of FunGra
 
 2.Download all files in Fungraph repository
 
-3.Install required R packages through command install.packages("package")
+3.Install required R packages through command `install.packages("package")`
 
 4.Open main.R, running all scripts
 
