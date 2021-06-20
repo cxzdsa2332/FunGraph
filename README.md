@@ -12,6 +12,4 @@ A statistical protocol to reconstruct omnigenic multilayer interactome networks 
 
 3. Install required R packages through command `install.packages("package")`
 
-4. Open **main.R**, running all scripts
-
-5. **FunGraph.R** contain all functions for computation, **plot_scripts.rar** contain all scripts for plotting
+4. Open **main.R**, running all scripts. **FunGraph.R** contain all functions for computation
