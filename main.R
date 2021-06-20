@@ -1,4 +1,3 @@
-rm(list=ls())
 #1.Load and clean data------------------------------------------------------------------------------------------
 source('FunGraph.R')
 library(mvtnorm)
