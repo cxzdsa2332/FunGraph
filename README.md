@@ -8,7 +8,7 @@ A statistical protocol to reconstruct omnigenic multilayer interactome networks 
 
 1. Read the published protocol
 
-2. Download all files in Fungraph repository
+2. Download all files in FunGraph repository
 
 3. Install required R packages through command `install.packages("package")`
 
