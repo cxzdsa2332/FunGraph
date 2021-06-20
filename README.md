@@ -2,16 +2,16 @@
 
 A statistical protocol to reconstruct omnigenic multilayer interactome networks for complex traits
 
-The example data and scripts only to demonstrate the general framework of FunGraph
+**The example data and scripts only to demonstrate the general framework of FunGraph**
 
 # To use
 
-1.Read the published protocol
+1. Read the published protocol
 
-2.Download all files in Fungraph repository
+2. Download all files in Fungraph repository
 
-3.Install required R packages through command `install.packages("package")`
+3. Install required R packages through command `install.packages("package")`
 
-4.Open main.R, running all scripts
+4. Open **main.R**, running all scripts
 
-5.FunGraph.R contain all functions for computation, plot_scripts.rar contain all scripts for plotting
+5. **FunGraph.R** contain all functions for computation, **plot_scripts.rar** contain all scripts for plotting
