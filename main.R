@@ -49,11 +49,12 @@ cluster_result <- get_cluster(data=FunMap_results$generic_effect,k=15,input=inpu
 legendre_order=4
 #ODE of modules
 module_result <- get_module_result(k=15,times=seq(1,14,length=30),order=3)
-#output csv file for Cytoscape
-write.csv(module_result[[1]][[1]][[1]],file = 'ck1.csv',row.names = FALSE)
-write.csv(module_result[[1]][[1]][[2]],file = 'ck2.csv',row.names = FALSE)
-write.csv(module_result[[1]][[2]][[1]],file = 'salt1.csv',row.names = FALSE)
-write.csv(module_result[[1]][[2]][[2]],file = 'salt2.csv',row.names = FALSE)
+#output xlsx files for Cytoscape
+library(writexl)
+write_xlsx(list(module_result[[1]][[1]][[1]]),'ODE_ck1.xlsx')
+write_xlsx(list(module_result[[1]][[1]][[2]]),'ODE_ck2.xlsx')
+write_xlsx(list(module_result[[1]][[2]][[1]]),'ODE_salt1.xlsx')
+write_xlsx(list(module_result[[1]][[2]][[2]]),'ODE_salt2.xlsx')
 #ODE of module 7
 submodule_result <- get_submodule_result(cluster=7,time=seq(1,14),order=3)
 #save.image("ODE_results.Rdata")
