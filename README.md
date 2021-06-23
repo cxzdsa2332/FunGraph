@@ -4,6 +4,8 @@ A statistical protocol to reconstruct omnigenic multilayer interactome networks 
 
 **The example data and scripts only to demonstrate the general framework of FunGraph**
 
+Running example script took about **4 hours** on a Intel Core i7-10700 processor windows platform
+
 # To use
 
 1. Read the published protocol
