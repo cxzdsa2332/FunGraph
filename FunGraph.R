@@ -101,15 +101,16 @@ get_LR_effect <- function(marker,times,data){
   return(return_object)
 }
 
-get_FunClu_rewsult <- function(data){
+get_biFunMap_result <- function(data){
   geno_df2 <- data
+  cat('Start biFunMap Calculation')
   core.number <- detectCores()
   cl <- makeCluster(getOption("cl.cores", core.number))
   clusterEvalQ(cl, {library(mvtnorm)})
   clusterExport(cl, c("get_LR_effect","geno_df2","pheno_df"),envir=environment())
   result1 <- pblapply(cl=cl,1:nrow(geno_df2),function(c)get_LR_effect(c,1:14,pheno_df))
   stopCluster(cl)
-  
+  cat('Finsh biFunMap Calculation')
   LR_result <- do.call(c,lapply(1:length(result1),function(c) result1[[c]][[1]]))
   generic_effect <- do.call(rbind,lapply(1:length(result1),function(c) result1[[c]][[2]]))
   rownames(generic_effect) <- geno_df[,3]
@@ -146,7 +147,7 @@ get_init_par <- function(data,k,legendre_order){
 }
 
 get_cluster <- function(data,k,input,legendre_order){
-  Delta <- 100; iter <- 0; itermax <- 100;
+  Delta <- 100; iter <- 1; itermax <- 100;
   get_biSAD1 <- function(par){
     n=length(t)
     get_SAD1_covmatrix <- function(par){
@@ -207,10 +208,10 @@ get_cluster <- function(data,k,input,legendre_order){
     LL <- sum(-log(rowSums(temp_S)))
     return(LL)
   }
-  
+  cat(paste0("Start biFunClu Calculation ","\n","Cluster_number=",k," Legendre_order=", legendre_order))
   while ( Delta > 1 && iter <= itermax ) {
     # initiation
-    if(iter == 0){
+    if(iter == 1){
       init_SAD_par <- input[[1]]
       init_curve_par <- input[[2]]
       pro <- input[[3]]
@@ -235,7 +236,7 @@ get_cluster <- function(data,k,input,legendre_order){
     Delta <- abs(L_Value-LL_mem)
     if (Delta > 20000)
       break
-    cat('\n',"iter=",iter,"LL=",L_Value,'\n')
+    cat("iter=",iter,"LL=",L_Value,'\n')
     iter <- iter+1; LL_mem <- L_Value
   } 
   
@@ -258,12 +259,54 @@ get_cluster <- function(data,k,input,legendre_order){
   p1 <- get_plot(clustered_ck); p2 <- get_plot(clustered_salt)
   clustered_ck <- clustered_ck[,-1];clustered_salt <- clustered_salt[,-1]
   return_object <- list(init_SAD_par,init_curve_par,pro,LL_mem,BIC,clustered_ck,clustered_salt,p1,p2)
+  cat("Finish biFunClu Calculation")
   names(return_object)<-c("SAD_par", "curve_par", "pro", "LL", 
                           "BIC", "clustered_ck","clustered_salt","plot1","plot2")
   return(return_object)
 }
 
-get_module_result <- function(k,times,order){
+legendre_fit <- function(par){
+  x <- seq(1,14,length=30)
+  fit <- sapply(1:length(par),function(c)
+    par[c]*legendre.polynomials(n=legendre_order, normalized=F)[[c]])
+  legendre_fit <- as.matrix(as.data.frame(polynomial.values(
+    polynomials=fit,x=scaleX(x, u=-1, v=1))))
+  x_interpolation <- rowSums(legendre_fit)
+  return(x_interpolation)
+}
+
+get_interaction <- function(data,col){
+  n <- nrow(data)
+  clean_data <- data
+  gene_list <- list()
+  m <- clean_data[,col]
+  M <- clean_data[,-col]
+  x_matrix <- M
+  x_matrix <- as.matrix(x_matrix)
+  #vec <- sapply(1:length(M[1,]),function(c)cor(m,M[,c]))
+  #x_matrix <- M[,which( vec %in% -sort(-vec)[1:(n/log(n))] )]
+  #x_matrix <- as.matrix(x_matrix)
+  name <- colnames(clean_data)
+  ridge1_cv <- cv.glmnet(x = x_matrix, y = m,alpha = 0)
+  best_ridge_coef <- abs(as.numeric(coef(ridge1_cv, s = ridge1_cv$lambda.min))[-1])
+  
+  fit_res <- cv.glmnet(x = x_matrix, y = m,alpha = 1,
+                       penalty.factor = 1/best_ridge_coef,
+                       keep = TRUE)
+  best_alasso_coef1 <- coef(fit_res, s = fit_res$lambda.min)
+  
+  gene_list_one <- list()
+  gene_list_one[[1]] <- name[col]
+  gene_list_one[[2]] <- best_alasso_coef1@Dimnames[[1]][best_alasso_coef1@i[-1]+1]
+  gene_list_one[[3]] <- best_alasso_coef1@x[-1]
+  gene_list[[col]] <- gene_list_one
+  
+  return(gene_list_one)
+}
+
+
+
+get_module_result <- function(k,times,order,cluster_result){
   legendre_fit <- function(par){
     x <- times
     fit <- sapply(1:length(par),function(c)
@@ -286,12 +329,10 @@ get_module_result <- function(k,times,order){
       #x_matrix <- M[,which( vec %in% -sort(-vec)[1:(n/log(n))] )]
       #x_matrix <- as.matrix(x_matrix)
       name <- colnames(clean_data)
-      ridge1_cv <- cv.glmnet(x = x_matrix, y = m,type.measure = "mse", 
-                             family="gaussian",nfold = 10,alpha = 0)
+      ridge1_cv <- cv.glmnet(x = x_matrix, y = m,alpha = 0)
       best_ridge_coef <- abs(as.numeric(coef(ridge1_cv, s = ridge1_cv$lambda.min))[-1])
       
-      fit_res <- cv.glmnet(x = x_matrix, y = m,type.measure = "mse", family="gaussian",
-                           nfold = 10,alpha = 1,
+      fit_res <- cv.glmnet(x = x_matrix, y = m,alpha = 1,
                            penalty.factor = 1/best_ridge_coef,
                            keep = TRUE)
       best_alasso_coef1 <- coef(fit_res, s = fit_res$lambda.min)
@@ -483,7 +524,8 @@ get_module_result <- function(k,times,order){
   return(list(ODE_result,all_net))
 }
 
-get_submodule_result <- function(cluster,times,order){
+get_SNP_result <- function(cluster,times,order,cluster_result){
+  options(warn=-1)
   df <- list(cluster_result$clustered_ck[cluster_result$clustered_ck$cluster==cluster,-15],
              cluster_result$clustered_salt[cluster_result$clustered_salt$cluster==cluster,-15])
   get_legendre_par <- function(times,order,i) {
@@ -499,12 +541,10 @@ get_submodule_result <- function(cluster,times,order){
       #x_matrix <- M[,which( vec %in% -sort(-vec)[1:(n/log(n))] )]
       #x_matrix <- as.matrix(x_matrix)
       name <- colnames(clean_data)
-      ridge1_cv <- cv.glmnet(x = x_matrix, y = m,type.measure = "mse", 
-                             family="gaussian",nfold = 10,alpha = 0)
+      ridge1_cv <- cv.glmnet(x = x_matrix, y = m,alpha = 0)
       best_ridge_coef <- abs(as.numeric(coef(ridge1_cv, s = ridge1_cv$lambda.min))[-1])
       
-      fit_res <- cv.glmnet(x = x_matrix, y = m,type.measure = "mse", family="gaussian",
-                           nfold = 10,alpha = 1,
+      fit_res <- cv.glmnet(x = x_matrix, y = m,alpha = 1,
                            penalty.factor = 1/best_ridge_coef,
                            keep = TRUE)
       best_alasso_coef1 <- coef(fit_res, s = fit_res$lambda.min)
