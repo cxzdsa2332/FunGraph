@@ -14,4 +14,4 @@ Running example script took about **4 hours** on a Intel Core i7-10700 processor
 
 3. Install required R packages through command `install.packages("package")`
 
-4. Open **main.R**, running all scripts. **FunGraph.R** contain all functions for computation
+4. Open **main.R**, running all scripts. **FunGraph.R** contains all functions for computation, **FunGraph_plot.R** contains all functions for plot
