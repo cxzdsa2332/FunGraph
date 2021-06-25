@@ -38,7 +38,7 @@ geno_df <- geno_df[,c(1:3,sapply(1:nrow(pheno_df),
 #2.run biFunMap-------------------------------------------------------------------------------------------------
 biFunMap_results <- get_biFunMap_result(geno_df[,-3:-1])
 #Out put Figure1
-Figure1 <- get_figure1(get_plot1a(marker=7506,times=1:14,data=pheno_df,geno_df2=geno_df[,-3:-1]),
+Figure1 <- get_figure1(get_p1_v2(times=1:14,data=pheno_df,geno_df2=geno_df[,-3:-1]),
                        get_plot1b(cbind(geno_df[,1:3],biFunMap_results[[1]])),
                        get_plot1c(biFunMap_results[[2]]))
 #3.run biFunCluster---------------------------------------------------------------------------------------------
@@ -49,7 +49,7 @@ biFunClu_results <- get_cluster(data=biFunMap_results$generic_effect,k=15,
                                 input=biFunClu_intial_pars,legendre_order=4)
 #Out put Figure2_B,use example_bic files
 Figure2 <- get_figure2(BIC_df=read.csv(file='example_bic.csv'),cluster_result=biFunClu_results)
-
+table(biFunClu_results$clustered_ck$cluster)
 #4.LASSO-based variable selection-------------------------------------------------------------------------------
 #demonstration for modules,k=15
 module_effect <- t(sapply(1:15, function(c)legendre_fit(biFunClu_results$curve_par[c,1:5])))
@@ -61,7 +61,7 @@ legendre_order=4
 #ODE of modules
 module_result <- get_module_result(k=15,times=seq(1,14,length=30),order=3,cluster_result = biFunClu_results)
 #plot Figure3_A
-Figure3A <- get_figure3a(k=15,times=seq(1,14,length=30),all_net=module_result[[2]][[1]],
+Figure3A <- get_fig3a_v2(k=15,times=seq(1,14,length=30),all_net=module_result[[2]],
                          cluster_result = biFunClu_results)
 #output xlsx files for Cytoscape
 library(writexl)
@@ -88,7 +88,5 @@ sub_module_result <- get_module_result(k=8,times=seq(1,14,length=30),order=3,
 sub_SNP_result <- get_SNP_result(cluster=7,time=seq(1,14),order=3,
                                  cluster_result = biFunClu_sub_results)
 #save.image('FunGraph.Rdata')
-
-
 
 
