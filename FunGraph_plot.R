@@ -247,8 +247,7 @@ get_plot1c <- function(generic_effect){
 }
 
 get_figure1 <- function(p1,p2,p3){
-  
-  requiredPackages = c("cowplot"，"reshape2")
+  requiredPackages = c("cowplot","reshape2")
   for(packages in requiredPackages){
     if(!require(packages,character.only = TRUE)) install.packages(packages)
     require(packages,character.only = TRUE)
@@ -571,5 +570,236 @@ get_figure3c <- function(k,times,all_net){
   network_plot(all_net[[1]],"Control")
   network_plot(all_net[[2]],"Stress")
   dev.off()
+  cat('Done')
+}
+
+get_p1_v2 <- function(times,data,geno_df2){
+  requiredPackages = c("ggplot2","reshape2","cowplot",'mvtnorm')
+  for(packages in requiredPackages){
+    if(!require(packages,character.only = TRUE)) install.packages(packages)
+    require(packages,character.only = TRUE)
+  }
+  pheno_df = data; t = times
+  y_all = pheno_df[,-1]
+  #miu
+  get_miu <- function(miu_par){
+    miu <- miu_par[1]/(1 + miu_par[2] * exp(-miu_par[3] * t)) - (miu_par[4] * exp(-miu_par[5] * t))
+    miu
+  }
+  #bi(SAD1)
+  get_biSAD1 <- function(par){
+    n=length(t)
+    get_SAD1_covmatrix <- function(par){
+      phi <- par[1]; gamma <- par[2]; 
+      sigma <- array(dim=c(n,n))
+      #formula 1, diag element
+      diag(sigma) <- sapply(1:n, function(c)(1-phi^(2*c))/(1-phi^2) )
+      #formula 2, non-diag element
+      sigma[lower.tri(sigma)] <- do.call(c,lapply(1:(n-1),function(c)phi^seq(1:(n-c))*diag(sigma)[c]))
+      sigma[upper.tri(sigma)] <- t(sigma)[upper.tri(t(sigma))]
+      return(gamma^2*sigma)
+    }
+    sig1 <- get_SAD1_covmatrix(par[1:2])
+    sig2 <- get_SAD1_covmatrix(par[3:4])
+    sig12 <- array(0, dim=c(n,n))
+    sigma1 <- cbind(sig1,sig12)
+    sigma2 <- cbind(sig12,sig2)
+    sigma <- rbind(sigma1,sigma2)
+    return(sigma)
+  }
+  
+  L0 <- function(par){
+    miu = c(get_miu(par[1:5]),get_miu(par[6:10]))
+    SAD1 = get_biSAD1(par[11:14])
+    L0 = -sum(dmvnorm(y_all,miu,SAD1,log = T))
+    L0
+  }
+  get_init_pars <- function(par){
+    y <- as.numeric(colMeans(y_all))
+    y1 <- c(get_miu(par[1:5]),get_miu(par[6:10]))
+    ssr <- sum((y1-y)^2)
+  }
+  
+  init_curve_par <- optim(c(mean(y_all[,14]),10,0.5,-2,2,mean(y_all[,28]),10,2,-2,1),get_init_pars)$par
+  init_par <- c(init_curve_par,0.95,12,1.02,8)
+  
+  NH_0 <- optim(init_par,L0,method="Nelder-Mead")
+  
+  col=c("#F8766D","#619CFF")
+  darken <- function(color, factor=1.2){
+    col <- col2rgb(color)
+    col <- col/factor
+    col <- rgb(t(col), maxColorValue=255)
+    col
+  }
+  
+  get_plot_data <- function(data){
+    tmp1 <- cbind(data[,1:14],'ck')
+    colnames(tmp1) <- c(1:14,'condition')
+    tmp2 <- cbind(data[,15:28],'salt')
+    colnames(tmp2) <- c(1:14,'condition')
+    tmp <- rbind(tmp1,tmp2)
+    return(tmp)
+  }
+  CK <- cbind(rownames(y_all),get_plot_data(y_all)[1:nrow(y_all),])
+  colnames(CK) <- c('id',1:14,'condition')
+  CK <- melt(CK,id.vars = c('id','condition'))
+  CK_mean <- data.frame(cbind(1:14,get_miu(NH_0$par[1:5])))
+  
+  p1 <- ggplot()+geom_line(CK,mapping = aes(variable,value,group=id),color=col[2],alpha=0.25)+
+    geom_line(CK_mean,mapping = aes(X1,X2),color=darken(col[2]),size=2)+
+    theme_bw()+theme(panel.grid =element_blank())+
+    xlab(NULL)+ylab('Phenotype')+
+    scale_y_continuous(limits=c(0,200))+
+    annotate('text',x=7,y=190,label='Control',size=4,col=darken(col[2]))+
+    theme(plot.margin = unit(c(0.5,0,0,0.5),"lines"))+
+    theme(
+      axis.title.x = element_text(size = 10),
+      axis.text.x = element_text(size = 10),
+      axis.title.y = element_text(size = 10),
+      axis.text.y = element_text(size = 10))
+  
+  salt <- cbind(rownames(y_all),get_plot_data(y_all)[(nrow(y_all)+1):(2*nrow(y_all)),])
+  colnames(salt) <- c('id',1:14,'condition')
+  salt <- melt(salt,id.vars = c('id','condition'))
+  salt_mean <- data.frame(cbind(1:14,get_miu(NH_0$par[6:10])))
+  
+  p2 <- ggplot()+geom_line(salt,mapping = aes(variable,value,group=id),color=col[1],alpha=0.25)+
+    geom_line(salt_mean,mapping = aes(X1,X2),color=darken(col[1]),size=2)+
+    theme_bw()+theme(panel.grid =element_blank())+
+    xlab(NULL)+ylab(NULL)+
+    annotate('text',x=7,y=195,label='Stress',size=4,col=darken(col[1]))+
+    scale_y_continuous(position = "right")+
+    theme(plot.margin = unit(c(0.5,0.5,0,0),"lines"))+
+    theme(
+      axis.title.x = element_text(size = 10),
+      axis.text.x = element_text(size = 10),
+      axis.title.y = element_text(size = 10),
+      axis.text.y = element_text(size = 10))
+  
+  pp <- plot_grid(p1,p2,ncol=2)
+  pp <- add_sub(pp, "Time (day)", hjust = 0.3,vjust=0)
+  ggdraw(pp)
+  
+}
+
+get_fig3a_v2 <- function(k,times,all_net,cluster_result){
+  requiredPackages = c("ggplot2","reshape2","orthopolynom",'cowplot','patchwork')
+  for(packages in requiredPackages){
+    if(!require(packages,character.only = TRUE)) install.packages(packages)
+    require(packages,character.only = TRUE)
+  }
+  cat('Plotting Figure3A','\n')
+  legendre_fit <- function(par){
+    x <- times
+    fit <- sapply(1:length(par),function(c)
+      par[c]*legendre.polynomials(n=legendre_order, normalized=F)[[c]])
+    legendre_fit <- as.matrix(as.data.frame(polynomial.values(
+      polynomials=fit,x=scaleX(x, u=-1, v=1))))
+    x_interpolation <- rowSums(legendre_fit)
+    return(x_interpolation)
+  }
+  get_curve_data <- function(i){
+    times <- times
+    cluster_mean <- t(sapply(1:k, function(c)legendre_fit(cluster_result$curve_par[c,1:5])))
+    rownames(cluster_mean) <- 1:k
+    d1 <- data.frame(all_net[[1]][[i]][[6]],check.names = F)
+    colnames(d1)[-1] <- all_net[[1]][[i]][[2]]
+    d1$sum <- rowSums(d1)
+    d1$origin <- as.numeric(cluster_mean[i,])
+    d1$x <- times
+    return(d1)
+  }
+  get_curve_data2 <- function(i){
+    times <- times
+    cluster_mean <- t(sapply(1:k, function(c)legendre_fit(cluster_result$curve_par[c,6:10])))
+    rownames(cluster_mean) <- 1:k
+    d1 <- data.frame(all_net[[2]][[i]][[6]],check.names = F)
+    colnames(d1)[-1] <- all_net[[2]][[i]][[2]]
+    d1$sum <- rowSums(d1)
+    d1$origin <- as.numeric(cluster_mean[i,])
+    d1$x <- times
+    return(d1)
+  }
+  ck <- lapply(1:k,function(c)get_curve_data(c))
+  salt <-  lapply(1:k,function(c)get_curve_data2(c))
+  col <- c('#ff7171','#0dceda','#9ede73')
+  darken <- function(color, factor=1.2){
+    col <- col2rgb(color)
+    col <- col/factor
+    col <- rgb(t(col), maxColorValue=255)
+    col
+  }
+
+  myplot <- function(i,data){
+    d <- data[[i]]
+    p1 <- ggplot(d,aes(x=x))+geom_line(d,mapping=aes(x=x,y=sum),color=col[2],size=1.5)+
+      geom_line(d,mapping=aes(x=x,y=ind_effect),color=col[1],size=1.4)
+    for (j in 1:(ncol(d)-4)) {
+      p1 <- p1+geom_line(aes_string(y=d[,1+j]),color=col[3],size=1.2,alpha=1)
+    }
+    p1 <- p1+ theme(panel.grid = element_blank(), 
+                    panel.background = element_rect(color = 'black', fill = 'transparent'), 
+                    legend.title = element_blank()) +
+      xlab(NULL) + ylab(NULL)+
+      theme(plot.margin = unit(c(0,0,0,0),"lines"))+
+      geom_hline(yintercept = 0, size = 0.6)
+    return(p1)
+  }
+  #myplot(1,salt)
+  
+  plot0 <- function(i){
+    d_s <- ck[[i]];d_w <- salt[[i]];n1=ncol(d_s);n2=ncol(d_w)
+    m1 <- c(min(d_s[,-n1]),max(d_s[,-n1]))
+    m2 <- c(min(d_w[,-n2]),max(d_w[,-n2]))
+    m <- c(min(m1,m2),max(m1,m2))
+    tmp1 <- myplot(i,ck)+theme(axis.title.x=element_blank(),
+                            axis.text.x=element_blank(),
+                            axis.ticks.length.x = unit(-0.1,"cm"))+
+      scale_y_continuous(limits = m,breaks=round(seq(round(m[1]),round(m[2]),length=3)))+
+    annotate('text',x=7,y=m[2],label='Control',size=5)
+    tmp2 <- myplot(i,salt)+theme(axis.title.x=element_blank(),
+                                  axis.text.x=element_blank(),
+                                  axis.ticks.length.x = unit(-0.1,"cm"),
+                                  axis.title.y=element_blank(),
+                                  axis.text.y=element_blank(),
+                                  axis.ticks.length.y = unit(-0.1,"cm"))+
+      scale_y_continuous(limits = m,breaks=round(seq(round(m[1]),round(m[2]),length=3)))+
+      annotate('text',x=7,y=m[2],label='Stress',size=5)
+    p0 <- tmp1+tmp2+ plot_annotation(title = paste0('M',1:k)[i], 
+                                     theme = theme(plot.title = element_text(hjust = 0.5,size=18)))
+    return(p0)
+  }
+  plot1 <- function(i){
+    d_s <- ck[[i]];d_w <- salt[[i]];n1=ncol(d_s);n2=ncol(d_w)
+    m1 <- c(min(d_s[,-n1]),max(d_s[,-n1]))
+    m2 <- c(min(d_w[,-n2]),max(d_w[,-n2]))
+    m <- c(min(m1,m2),max(m1,m2))
+    tmp1 <- myplot(i,ck)+
+      scale_y_continuous(limits = m,breaks=round(seq(round(m[1]),round(m[2]),length=4)))+
+      annotate('text',x=7,y=m[2],label='Control',size=5)
+    tmp2 <- myplot(i,salt)+theme(axis.title.y=element_blank(),
+                                 axis.text.y=element_blank(),
+                                 axis.ticks.length.y = unit(-0.1,"cm"))+
+      scale_y_continuous(limits = m,breaks=round(seq(round(m[1]),round(m[2]),length=4)))+
+      annotate('text',x=7,y=m[2],label='Stress',size=5)
+    p0 <- tmp1+tmp2+ plot_annotation(title = paste0('M',1:k)[i], 
+                                     theme = theme(plot.title = element_text(hjust = 0.5,size=18)))
+    return(p0)
+  }
+
+  p <- list()
+  for (i in 1:10) {
+    p[[i]] <- plot0(i)
+  }
+  p[[11]] <- plot1(11)
+  p[[12]] <- plot1(12)
+  p[[13]] <- plot1(13)
+  p[[14]] <- plot1(14)
+  p[[15]] <- plot1(15)
+  pp <- plot_grid(p[[1]],p[[2]],p[[3]],p[[4]],p[[5]],p[[6]],p[[7]],p[[8]],p[[9]],p[[10]],p[[11]],
+              p[[12]],p[[13]],p[[14]],p[[15]],nrow=3,ncol=5)
+  pp <- add_sub(pp, "Time (day)", hjust = 0.3,vjust=-0.5)
+  ggsave("Figure3_A.pdf",pp,width =21, height = 7,units = "in")
   cat('Done')
 }
