@@ -1,5 +1,5 @@
 rm(list=ls())
-load('FunGraph.Rdata')
+#load('FunGraph.Rdata')
 #1.Load and clean data------------------------------------------------------------------------------------------
 source('FunGraph.R')
 source('FunGraph_plot.R')
