@@ -1,0 +1,158 @@
+---
+title: "FunGraph-vignette"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{FunGraph-vignette}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r, include = FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>",
+  fig.width = 7, fig.height = 3.5
+)
+```
+
+```{r setup}
+library(FunGraph)
+```
+
+take a look at genotypic data used in example
+```{r, eval=FALSE}
+View(geno)
+```
+
+```{r, echo=FALSE}
+knitr::kable(head(geno[,1:10]))
+```
+
+take a look at phenotypic data used in example
+
+```{r, eval=FALSE}
+View(pheno)
+```
+
+```{r, echo=FALSE}
+knitr::kable(head(pheno[,1:10]))
+```
+  
+1.biFunMap exampleples
+======================
+
+first plot mean curve to check initial parameters is OK
+```{r}
+get_mean_curve_plot(pheno_df = pheno, times = 1:14)
+
+#Notice wrong given inital parameters results in incorrect mean curve(blue line)
+get_mean_curve_plot(pheno_df = pheno, times = 1:14, init_sd_par = c(2,0.1,2,0.1))
+```
+
+calculate LR value for a SNP
+```{r}
+#geno[,-1:-2] remove redundant information for calculation
+get_LR_effect(marker = 1, 
+              geno_df = geno[,-1:-2], 
+              pheno_df = pheno, 
+              times = 1:14)
+```
+
+
+calculate all biFunMap result
+```{r,eval = FALSE}
+get_biFunMap_result(geno_df = geno[,-1:-2], 
+                    pheno_df = pheno, 
+                    times = 1:14)
+```
+
+manhattan plot using calculate LR values
+```{r}
+get_manh_plot(geno_df = geno, LR = LR)
+```
+
+choose 10 SNPs to show their generic effect
+```{r}
+get_generic_effect_plot(generic_effect = generic_effect, number = 10)
+```
+
+run permutation if have enough computer resoruce
+```{r,eval = FALSE}
+#example use permutation 5 times, each permutation use first 3 SNPs
+get_permutation(n = 5, 
+                geno_df = geno[1:3,-1:-2],
+                pheno_df = pheno,
+                times = 1:14)
+```       
+see more about how FunMap work on [funmap2](https://github.com/wzhy2000/Funmap2).     
+
+2.biFunClu exampleples
+======================
+prepare initial parameters for biFunClu (may need to change init_sd_par manually)
+in this example only use first 100 rows to cluster, larger data set took more time
+```{r}
+set.seed(2021) #use same initial value
+
+input <- get_init_par(data = generic_effect[1:100,],
+                         k = 5,
+                         legendre_order = 3,
+                         times = 1:14)
+
+c1 <- get_cluster(input = input, itermax = 10)
+
+#plot the result
+get_cluster_base_plot(c1$clustered_data[[1]])
+```
+see more about how FunClu work on [funclu](https://www.genetics.org/content/genetics/180/2/821.full.pdf). 
+
+3.LASSO-based variable selection examples
+=========================================
+```{r}
+module_data <- get_module_data(data_par = c1$curve_par, times = 1:14)
+
+#select ck data for variable selection
+get_interaction(data = module_data[[1]], col = 1)
+
+#alternatively, use a cluster data(ck) for variable selection
+get_interaction(data = c1$clustered_data[[1]][,-ncol(c1$clustered_data[[1]])], 
+                col = 1, 
+                reduction = TRUE)
+```
+
+4.ODE solving examples
+======================
+```{r}
+module_data <- get_module_data(data_par = c1$curve_par, times = 1:14)
+#for module, just input module data
+module_ode1 <- get_ode_par(data = module_data[[1]],
+                          times = 1:14,
+                          order = 3,
+                          reduction = FALSE,
+                          parallel = FALSE)
+#the result should be further processed
+module_net1 <- get_all_net(module_ode1)
+```
+
+take a look at whats going on with 1st and 3rd module(i=1, i=3) of CK data
+```{r}
+get_decomposition_plot(module_ode1,module_net1,1)
+get_decomposition_plot(module_ode1,module_net1,3)
+```
+
+5.construct network examples
+============================
+write files for Cytoscape
+```{r}
+get_net_output(module_ode1,module_net1,write_data = FALSE)
+```
+see more on how to use [Cytoscape](https://cytoscape.org/). 
+
+or use igraph package for visulation
+```{r}
+#acquire max_effect to control color
+max_effect <- cbind(get_max_effect(module_net1),get_max_effect(module_net1))
+network_plot(k = module_net1,
+             title = 'CK',
+             max_effect = max_effect,
+             save_plot = FALSE)
+```
