@@ -4,9 +4,9 @@ Title: A statistical protocol to reconstruct omnigenic multilayer
         interactome networks for complex traits
 Version: 0.1.0
 Author: Ang Dong
-Maintainer: The package maintainer <yourself@somewhere.net>
-Description: More about what it does (maybe more than one line)
-    Use four spaces when indenting paragraphs within the Description.
+Maintainer: Ang Dong <fantasys05227@gmail.com>
+Description: FunGraph provides a detailed protocol for revealing the comprehensive genetic architecture 
+	of complex traits.
 License: GPL
 Imports: utils, grDevices, stats, mvtnorm, orthopolynom, parallel,
         pbapply, ggplot2, reshape2, glmnet, igraph, stringr, cowplot,
@@ -16,6 +16,6 @@ LazyData: true
 RoxygenNote: 7.1.1
 VignetteBuilder: knitr
 Suggests: BiocStyle, knitr, rmarkdown
-Depends: R (>= 2.10)
+Depends: R (>= 3.60)
 NeedsCompilation: no
-Packaged: 2021-08-31 12:33:16 UTC; ddaa
+Packaged: 2021-09-01 01:30:38 UTC; ddaa
