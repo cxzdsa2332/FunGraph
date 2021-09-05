@@ -27,7 +27,7 @@ get_LR_effect(
 \item{simplify}{default is FALSE, only used in permutation to return less result}
 }
 \value{
-the LR value, generic effect and calculated parameters
+the LR value, genetic effect and calculated parameters
 }
 \description{
 perform biFunMap for a SNP

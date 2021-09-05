@@ -55,7 +55,7 @@ L2 <- function(pheno_0, pheno_1, pheno_2, par, times){
 #' @param times vector for the time point
 #' @param init_sd_par vector of length four for biSAD1 covariance matrix
 #' @param simplify default is FALSE, only used in permutation to return less result
-#' @return the LR value, generic effect and calculated parameters
+#' @return the LR value, genetic effect and calculated parameters
 #' @export
 get_LR_effect <- function(marker, geno_df, pheno_df, times,
                           init_sd_par = c(0.95,12,1.02,8),simplify = FALSE){
@@ -100,14 +100,14 @@ get_LR_effect <- function(marker, geno_df, pheno_df, times,
     effect <- sqrt( effect1/nrow(y_all) - (effect2/nrow(y_all))^2 )
     return(effect)
   }
-  generic_effect <- get_genetic_effect(times)
+  genetic_effect <- get_genetic_effect(times)
 
   if (simplify != FALSE) {
     return_object <- LR
   }
   else{
     return_object <- list(LR = LR,
-                          generic_effect = generic_effect,
+                          genetic_effect = genetic_effect,
                           NH0_pars = NH_0$par,
                           NH1_pars = NH_1$par)
   }
@@ -162,17 +162,17 @@ get_biFunMap_result <- function(geno_df, pheno_df, times, write_data = TRUE){
   stopCluster(cl)
 
   LR_result <- do.call(c,lapply(1:length(result1),function(c) result1[[c]][[1]]))
-  generic_effect <- do.call(rbind,lapply(1:length(result1),function(c) result1[[c]][[2]]))
-  rownames(generic_effect) <- rownames(geno_df)
-  colnames(generic_effect) <- colnames(pheno_df)
+  genetic_effect <- do.call(rbind,lapply(1:length(result1),function(c) result1[[c]][[2]]))
+  rownames(genetic_effect) <- rownames(geno_df)
+  colnames(genetic_effect) <- colnames(pheno_df)
 
   return_object <- list(LR_result = LR_result,
-                        generic_effect = generic_effect,
+                        genetic_effect = genetic_effect,
                         FunMap_pars = result1)
 
   if (write_data==TRUE) {
-    write.csv(generic_effect,file = 'generic_effect.csv')
-    cat('generic_effect data written',sep="\n")
+    write.csv(genetic_effect,file = 'genetic_effect.csv')
+    cat('genetic_effect data written',sep="\n")
   }
   return(return_object)
 }
@@ -312,16 +312,16 @@ get_manh_plot <- function(geno_df, LR_result, threshold = 20) {
   return(p)
 }
 
-#' @title plot generic effect of random choose number = number
+#' @title plot genetic effect of random choose number = number
 #' @import ggplot2
 #' @importFrom reshape2 melt
-#' @param generic_effect dataframe of calculated generic effect data
-#' @param number scalar of number of SNPs' effect curve want to show(must <= nrow(generic_effect))
-#' @return line plot of generic effect
+#' @param genetic_effect dataframe of calculated genetic effect data
+#' @param number scalar of number of SNPs' effect curve want to show(must <= nrow(genetic_effect))
+#' @return line plot of genetic effect
 #' @export
-get_generic_effect_plot <- function(generic_effect, number){
-  d = ncol(generic_effect)/2
-  df <- generic_effect[sample(nrow(generic_effect), number),]
+get_genetic_effect_plot <- function(genetic_effect, number){
+  d = ncol(genetic_effect)/2
+  df <- genetic_effect[sample(nrow(genetic_effect), number),]
   df_ck <- df[,1:d]
   colnames(df_ck) <- 1:d
   df_ck <- cbind(rownames(df_ck),df_ck)
@@ -345,7 +345,18 @@ get_generic_effect_plot <- function(generic_effect, number){
 
   p <- ggplot(df2,mapping = aes(time,effect,group=condition,color=condition))+
     geom_line()+facet_wrap(~id,nrow=2)+scale_color_manual(values=c("#619CFF","#F8766D"))+
-    mytheme + theme(legend.title = element_blank())+xlab('Time (day)')+ylab('Generic Effect')+
+    mytheme + theme(legend.title = element_blank())+xlab('Time (day)')+ylab('genetic Effect')+
     theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank())
   p
+}
+
+#' @title select subset data
+#' @param data dataframe of calculated genetic effect data
+#' @param cluster scalar of cluster to choose
+#' @return genetic effect dataframe only conatin cluster=i
+#' @export
+get_subset_data <- function(data, cluster){
+  cluster_no <- which(data$cluster == cluster)  
+  tmp <- data[cluster_no,-ncol(data)]
+  return(tmp)
 }

@@ -122,6 +122,6 @@ get_cluster_base_plot <- function(clustered_data){
                 aes(as.numeric(as.character(long_df$time)),long_df$effect,group=long_df$marker,
                                                colour = as.character(long_df$cluster)),alpha=1)+
     facet_wrap(long_df$cluster,scales = "fixed")+
-    theme(legend.position="none") + xlab("Time")+ylab("generic_effect")
+    theme(legend.position="none") + xlab("Time")+ylab("genetic_effect")
   return(p)
 }

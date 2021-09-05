@@ -73,7 +73,7 @@ LOP_rk4 <- function(x0, y0, h, d_LOP_fit){
 #' @title generate a growth curve(ind or dep effect curve)
 #' @importFrom orthopolynom legendre.polynomials polynomial.derivatives scaleX
 #' @param pars vector of LOP pars
-#' @param effect scalar of observed generic or any other data of a time point
+#' @param effect scalar of observed genetic or any other data of a time point
 #' @param times vector of time point
 #' @param order the order of LOP
 #' @param y0 scalar of initial y
@@ -149,7 +149,7 @@ get_value <- function(effect,relationship,times,order){
 #' @param times vector of time point
 #' @param order scalar of LOP order
 #' @param reduction use n/log(n) dimension reduction
-#' @pram parallel use parallel computation or not
+#' @param parallel use parallel computation or not
 #' @return list contain variable selection results and LOP parameters for every row
 #' @export
 get_ode_par <- function(data, times, order, reduction, parallel = TRUE) {

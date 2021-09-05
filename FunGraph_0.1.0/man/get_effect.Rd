@@ -9,7 +9,7 @@ get_effect(pars, effect, times, order, y0)
 \arguments{
 \item{pars}{vector of LOP pars}
 
-\item{effect}{scalar of observed generic or any other data of a time point}
+\item{effect}{scalar of observed genetic or any other data of a time point}
 
 \item{times}{vector of time point}
 

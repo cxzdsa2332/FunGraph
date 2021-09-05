@@ -18,4 +18,4 @@ VignetteBuilder: knitr
 Suggests: BiocStyle, knitr, rmarkdown
 Depends: R (>= 3.60)
 NeedsCompilation: no
-Packaged: 2021-09-01 01:30:38 UTC; ddaa
+Packaged: 2021-09-04 01:17:10 UTC; ddaa

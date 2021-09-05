@@ -42,7 +42,7 @@ get_LR_effect(marker = 1,
 get_manh_plot(geno_df = geno, LR = LR)
 
 ## -----------------------------------------------------------------------------
-get_generic_effect_plot(generic_effect = generic_effect, number = 10)
+get_genetic_effect_plot(genetic_effect = genetic_effect, number = 10)
 
 ## ----eval = FALSE-------------------------------------------------------------
 #  #example use permutation 5 times, each permutation use first 3 SNPs
@@ -54,7 +54,7 @@ get_generic_effect_plot(generic_effect = generic_effect, number = 10)
 ## -----------------------------------------------------------------------------
 set.seed(2021) #use same initial value
 
-input <- get_init_par(data = generic_effect[1:100,],
+input <- get_init_par(data = genetic_effect[1:100,],
                          k = 5,
                          legendre_order = 3,
                          times = 1:14)
@@ -64,7 +64,7 @@ c1 <- get_cluster(input = input, itermax = 10)
 #plot the result
 get_cluster_base_plot(c1$clustered_data[[1]])
 
-## -----------------------------------------------------------------------------
+## ---- warning=FALSE-----------------------------------------------------------
 module_data <- get_module_data(data_par = c1$curve_par, times = 1:14)
 
 #select ck data for variable selection
@@ -75,7 +75,7 @@ get_interaction(data = c1$clustered_data[[1]][,-ncol(c1$clustered_data[[1]])],
                 col = 1, 
                 reduction = TRUE)
 
-## -----------------------------------------------------------------------------
+## ---- warning=FALSE-----------------------------------------------------------
 module_data <- get_module_data(data_par = c1$curve_par, times = 1:14)
 #for module, just input module data
 module_ode1 <- get_ode_par(data = module_data[[1]],
@@ -100,4 +100,13 @@ network_plot(k = module_net1,
              title = 'CK',
              max_effect = max_effect,
              save_plot = FALSE)
+
+## ---- warning=FALSE-----------------------------------------------------------
+m1_ck <- get_subset_data(data = c1$clustered_data[[1]], cluster = 1)
+m1_ck_ode <- get_ode_par(data = m1_ck, times = 1:14, order = 3, reduction = TRUE, parallel = FALSE)
+m1_ck_net <- get_all_net(m1_ck_ode)
+
+max_effect <- cbind(get_max_effect(m1_ck_net),get_max_effect(m1_ck_net))
+
+network_plot(k = m1_ck_net, title = 'Module1_CK', max_effect = max_effect, save_plot = FALSE)
 

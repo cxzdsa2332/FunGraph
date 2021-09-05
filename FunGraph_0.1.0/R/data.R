@@ -26,9 +26,9 @@
 #' @format A vector length = 8305
 "LR"
 
-#' generic effect data
+#' genetic effect data
 #'
 #' A dataset containing calculated generic effect from geno and pheno in this dataset
 #'
-#' @format A data frame of 28 columns and 8305 SNPs
-"generic_effect"
+#' @format A data frame of 28 columns and 8305 rows
+"genetic_effect"
