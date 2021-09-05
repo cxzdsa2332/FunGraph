@@ -10,8 +10,8 @@ Running example script took about **4 hours** on a Intel Core i7-10700 processor
 
 1. Read the published protocol
 
-2. Download all files in FunGraph repository
+2. Install and load devtools through command `install.packages("devtools")` `library(devtools)`
 
-3. Install required R packages through command `install.packages("package")`
+3. Install and load FunGraph through command `install_github("cxzdsa2332/FunGraph/FunGraph_0.1.0")` `library(devtools)`
 
-4. Open **main.R**, running all scripts. **FunGraph.R** contains all functions for computation, **FunGraph_plot.R** contains all functions for plot
+4. Read vignette for more details
