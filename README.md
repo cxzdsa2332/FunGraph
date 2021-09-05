@@ -14,4 +14,4 @@ Running example script took about **4 hours** on a Intel Core i7-10700 processor
 
 3. Install and load FunGraph through command `install_github("cxzdsa2332/FunGraph/FunGraph_0.1.0")` and `library(devtools)`
 
-4. Read [vignette] (https://github.com/cxzdsa2332/FunGraph/blob/main/FunGraph_0.1.0/inst/doc/FunGraph-vignette.html) for more details 
+4. Read [I'm an inline-style link](https://www.google.com) for more details 
