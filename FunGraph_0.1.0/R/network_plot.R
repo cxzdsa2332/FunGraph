@@ -112,48 +112,48 @@ network_plot <- function(k, title, max_effect, color_size = 100, save_plot = TRU
     return(temp)
   }
   extra <- sapply(k,get_extra)
-
+  
   after <- do.call(rbind,lapply(k, get_after))
-
+  
   colfunc <- colorRampPalette(c("#619CFF",
                                 "#ffdead",
                                 "#F8766D"))
-
+  
   links_col = data.frame(color = colfunc(color_size),
                          y = cut(seq(-max(max_effect[,1]),max(max_effect[,1]),length=color_size),color_size))
-
+  
   links_interval = t(sapply(1:color_size,function(c) replace_character(links_col$y[c])))
-
+  
   links <- after
   colnames(links) <- c("from","to","weight")
   for (i in 1:nrow(links)) {
     links$edge.colour[i] <- links_col$color[which(sapply(1:color_size,function(c)
       findInterval(links$weight[i],c(links_interval[c,])))==1)] #add colour for links
   }
-
+  
   #nodes
   node_col <- data.frame(color = colfunc(color_size),
                          y = cut(seq(-max(max_effect[,2]),max(max_effect[,2]),length=color_size),color_size))
   node_interval = t(sapply(1:color_size,function(c) replace_character(node_col$y[c])))
   nodes <- data.frame(unique(links[,2]),unique(links[,2]),extra)
   colnames(nodes) <- c("id","name","ind_effect")
-  nodes$influence <- aggregate(weight ~ to, data = links, sum)[,2]
+  nodes$influence <- round(aggregate(weight ~ to, data = links, sum)[,2],3)
   for (i in 1:nrow(nodes)) {
     nodes$colour[i] <- node_col$color[which(sapply(1:color_size,function(c)
       findInterval(nodes$influence[i],c(node_interval[c,])))==1)] #add colour for links
   }
-
+  
   #normalization
   normalization <- function(x){(x-min(x))/(max(x)-min(x))*1.5+0.3}
-
+  
   #final plot
   links[,3] <- normalization(abs(links[,3]))
   nodes[,3:4] <- normalization(abs(nodes[,3:4]))
   net <- graph_from_data_frame( d=links,vertices = nodes,directed = T )
-
+  
   #layout
   l <- layout_randomly(net)
-
+  
   if (save_plot == TRUE) {
     cat('Save PDF plot','\n')
     pdf(paste0(title,"_network_plot.pdf"),width=10,height=10)

@@ -13,9 +13,9 @@ Imports: utils, grDevices, stats, mvtnorm, orthopolynom, parallel,
         patchwork, ggrepel
 Encoding: UTF-8
 LazyData: true
-RoxygenNote: 7.1.1
+RoxygenNote: 7.1.2
 VignetteBuilder: knitr
 Suggests: BiocStyle, knitr, rmarkdown
 Depends: R (>= 3.60)
 NeedsCompilation: no
-Packaged: 2021-09-04 01:17:10 UTC; ddaa
+Packaged: 2021-10-13 08:03:31 UTC; ddaa

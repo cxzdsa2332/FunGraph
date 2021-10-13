@@ -110,9 +110,10 @@ get_cluster <- function(input, itermax = 100, Delta = 100,  write_data = TRUE){
 #' @import ggplot2
 #' @importFrom reshape2 melt
 #' @param clustered_data clustered data with rownames in first column
+#' @param alpha scalar control transparency 
 #' @return a plot
 #' @export
-get_cluster_base_plot <- function(clustered_data){
+get_cluster_base_plot <- function(clustered_data, alpha = 1){
   clustered_data <- cbind(rownames(clustered_data),clustered_data)
   colnames(clustered_data) <- c("marker", 1:(ncol(clustered_data)-2), "cluster")
   long_df <- melt(clustered_data,c("marker","cluster"))
@@ -120,8 +121,65 @@ get_cluster_base_plot <- function(clustered_data){
   p <-  ggplot()+
     geom_line(long_df,mapping=
                 aes(as.numeric(as.character(long_df$time)),long_df$effect,group=long_df$marker,
-                                               colour = as.character(long_df$cluster)),alpha=1)+
+                                               colour = as.character(long_df$cluster)),alpha=alpha)+
     facet_wrap(long_df$cluster,scales = "fixed")+
     theme(legend.position="none") + xlab("Time")+ylab("genetic_effect")
   return(p)
+}
+
+#' @title batch biFunClu
+#' @import parallel
+#' @import pbapply
+#' @importFrom mvtnorm dmvnorm
+#' @importFrom stats optim
+#' @importFrom utils write.csv
+#' @param data dataframe contain numeric values for further analysis
+#' @param order scalar of LOP order
+#' @param times vector of time points
+#' @param rep numeric value for repetation number under a k
+#' @param min_cluster scalar of minimum cluster to calculate(must >= 2)
+#' @param max_cluster scalar of maximum cluster to calculate
+#' @param itermax scalar constrain the maximum number of iteracion
+#' @return batch biFunClu results in a list
+#' @export
+get_BIC <- function(data, order, times, rep, min_cluster, max_cluster, itermax){
+  
+  input <- list()
+  
+  for (i in min_cluster:max_cluster) {
+    input[[i]] <- lapply(1:rep, function(c) get_init_par(data,i,order,times)) 
+  }
+  
+  core.number <- detectCores()
+  cl <- makeCluster(getOption("cl.cores", core.number))
+  clusterEvalQ(cl, {require(mvtnorm)})
+  clusterEvalQ(cl, {require(orthopolynom)})
+  clusterExport(cl, c("data","order","get_init_par","get_cluster",
+                      "times","rep","min_cluster","max_cluster",
+                      "input","legendre_fit","get_biSAD1",
+                      "get_SAD1_covmatrix"),envir = environment())
+  
+  output <- pblapply(seq(min_cluster, max_cluster),function(x) pblapply(1:rep, function(c) 
+    get_cluster(input[[x]][[c]],itermax = itermax, write_data = FALSE),cl=cl)) 
+  
+  stopCluster(cl)
+  
+  #convert the output
+  tmp <- seq(min_cluster, max_cluster)
+  
+  
+  all_BIC <- sapply(1:length(output),function(x)min(sapply(output[[x]],function(c)c$BIC)))
+  
+  optim_k <- tmp[which.min(all_BIC)]
+  
+  optim_output <- sapply(1:length(output),function(x)which.min(sapply(output[[x]],function(c)c$BIC)))
+  
+  output2 <- output[[which.min(all_BIC)]][[optim_output[which.min(all_BIC)]]]
+  
+  return_obj <- list(optim_k = optim_k,
+                     k = tmp,
+                     BIC = all_BIC,
+                     result = output2)
+  
+  return(return_obj)
 }

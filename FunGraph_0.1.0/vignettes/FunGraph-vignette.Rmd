@@ -1,34 +1,50 @@
 ---
-title: "FunGraph-vignette"
-output: rmarkdown::html_vignette
+title: "FunGraph-vignette-v0.1.0"
+author: "Ang Dong"
+date: "`r format(Sys.Date(), '%m/%d/%Y')`"
+output:
+  rmarkdown::html_document:
+    highlight: pygments
+    toc: true
 vignette: >
   %\VignetteIndexEntry{FunGraph-vignette}
   %\VignetteEngine{knitr::rmarkdown}
-  %\VignetteEncoding{UTF-8}
+  %\VignetteEncoding{UTF-8}'
+  %\usepackage[utf8]{inputenc}
 ---
 
 ```{r, include = FALSE}
 knitr::opts_chunk$set(
+  tidy = TRUE,
+  cache = TRUE,
   collapse = TRUE,
-  comment = "#>",
-  fig.width = 7, fig.height = 3.5
+  dev = "png",
+  fig.width = 7, 
+  fig.height = 3.5
 )
 ```
 
-```{r setup}
+```{r load-packages, include=FALSE}
 library(FunGraph)
 ```
 
-take a look at genotypic data used in example
-```{r, eval=FALSE}
-View(geno)
-```
+# About
+FunGraph can analyze the roadmap of how each locus affects phenotypic variation through its own direct
+effect and a complete set of indirect effects due to regulation by other loci co-existing in large-scale
+networks.
 
-```{r, echo=FALSE}
-knitr::kable(head(geno[,1:10]))
-```
+**For complete details on the use and execution of this protocol, please refer to [Wang et al](https://doi.org/10.1016/j.celrep.2021.109114).**
 
-take a look at phenotypic data used in example
+# 1. Input data
+
+Before running FunGraph, user need to provide genotypic and phenotypic datasets, 
+and they should be cleaned and merged to exactly the same format of the example data. 
+
+## 1.1 Phenotypic data
+
+Phenotypic dataset contains control group and the treatment group, each with same 
+sample id as row names and same column number to represent the times phenotypic data 
+were measured.
 
 ```{r, eval=FALSE}
 View(pheno)
@@ -37,20 +53,71 @@ View(pheno)
 ```{r, echo=FALSE}
 knitr::kable(head(pheno[,1:10]))
 ```
-  
-1.biFunMap exampleples
-======================
 
-first plot mean curve to check initial parameters is OK
-```{r}
+## 1.2 Genotypic data
+
+Genotypic data have sample id as columns and SNP id as row names, and 
+may include additional information such as the SNP position in linkage for manhattan plot.
+
+```{r, eval=FALSE}
+View(geno)
+```
+
+```{r, echo=FALSE}
+knitr::kable(head(geno[,1:10]))
+```
+
+# 2. biFunMap
+
+Bivariate Functional mapping (biFunMap) is crucial to this model, for it excavates how 
+specific QTLs determines the complex trait expressed in various environments. 
+The mean vector and covariance structure should be modeled according to the design of the experiment.
+
+## 2.1 Mean Curve
+
+**Note:** Current `get_mu()` function use modified logistic growth curve funciton
+
+```{r, eval=TRUE}
+plot( x = seq(1,5,length=100), 
+      y = get_mu(c(10,5,3,-2,1),seq(1,5,length=100)), 
+      type = 'l',
+      main="Modified Logistic Growth Curve", 
+      xlab="Times", 
+      ylab="Phenotypic Values")
+```
+
+For biFunMap, the `get_mu2()` is just paste two `get_mu()` function together
+
+## 2.2 Corvariance Matrix
+
+`get_SAD1_covmatrix()` function use modified logistic growth curve funciton
+
+```{r, eval=TRUE}
+get_SAD1_covmatrix(c(2,0.5), n = 5)
+
+```
+
+The corvariance matrix of biSAD1
+```{r, eval=TRUE}
+get_biSAD1(c(2,0.5,0.5,2), n = 5)
+
+```
+
+## 2.3 Check initial parameters
+
+First plot mean curve to check initial parameters is OK
+```{r, fig.height=3, fig.width=7}
 get_mean_curve_plot(pheno_df = pheno, times = 1:14)
 
 #Notice wrong given inital parameters results in incorrect mean curve(blue line)
 get_mean_curve_plot(pheno_df = pheno, times = 1:14, init_sd_par = c(2,0.1,2,0.1))
 ```
 
+## 2.4 biFunMap calculation
+
 calculate LR value for a SNP
-```{r}
+
+```{r, eval=TRUE}
 #geno[,-1:-2] remove redundant information for calculation
 get_LR_effect(marker = 1, 
               geno_df = geno[,-1:-2], 
@@ -58,112 +125,378 @@ get_LR_effect(marker = 1,
               times = 1:14)
 ```
 
+FunGraph already wrapped the mean curve modelling, covariance matrix modelling 
+and likelihood ratio calculation into a function `get_biFunMap_result()`.
 
-calculate all biFunMap result
-```{r,eval = FALSE}
-get_biFunMap_result(geno_df = geno[,-1:-2], 
+```{r, eval=FALSE}
+result1 <- get_biFunMap_result(geno_df = geno[,-1:-2], 
                     pheno_df = pheno, 
                     times = 1:14)
 ```
 
-manhattan plot using calculate LR values
-```{r}
-get_manh_plot(geno_df = geno, LR = LR)
+
+## 2.5 biFunMap results visulation
+
+Manhattan plot using calculate LR values
+```{r, eval=TRUE}
+get_manh_plot(geno_df = geno, LR = LR, threshold = 20)
 ```
 
-choose 10 SNPs to show their genetic effect
-```{r}
+**Note:** Permutation tests can be used to determine the genome-wide critical threshold(LR) by `get_permutation()`, run permutation require huge computer resoruce.
+
+```{r,eval = TRUE}
+#example use permutation 5 times, each permutation use first 3 SNPs
+perm <- get_permutation(n = 5, 
+                        geno_df = geno[1:3,-1:-2],
+                        pheno_df = pheno,
+                        times = 1:14)
+
+threthold <- sort(do.call(c, lapply(perm, max)))
+```       
+
+
+Choose 10 SNPs to show their genetic effect
+```{r, eval=TRUE, fig.width = 10}
 get_genetic_effect_plot(genetic_effect = genetic_effect, number = 10)
 ```
 
-run permutation if have enough computer resoruce
-```{r,eval = FALSE}
-#example use permutation 5 times, each permutation use first 3 SNPs
-get_permutation(n = 5, 
-                geno_df = geno[1:3,-1:-2],
-                pheno_df = pheno,
-                times = 1:14)
-```       
-see more about how FunMap work on [funmap2](https://github.com/wzhy2000/Funmap2).     
+## 2.6 Theory behind biFunMap
 
-2.biFunClu exampleples
-======================
-prepare initial parameters for biFunClu (may need to change init_sd_par manually)
-in this example only use first 100 rows to cluster, larger data set took more time
+A modified logistic growth equation is a combination of the logistic growth equation and the decreasing
+exponential function that allows for decelerating growth during the early growth stage, where a is the
+asymptotic growth, b is the parameter related to initial growth, r is the relative growth rate, and c
+and d are two parameters that determine the pattern of decelerating growth.
+
+$$ g(t)=\frac{a}{1+b e^{-r t}}-c e^{-d t} $$
+
+Let $\mathbf{y}_{i}=\left(y_{i}\left(t_{1}\right), \ldots, y_{i}\left(t_{T}\right)\right)$ and $\mathbf{z}_{i}=\left(z_{i}\left(t_{1}\right), \ldots, z_{i}\left(t_{T}\right)\right)$ denote the phenotypic values of a complex trait measured for the ith mapping member at time schedule $\left(t_{1}, \ldots, t_{T}\right)$ in environment $\mathrm{Y}$ and $\mathrm{Z}$, respectively. We formulate a joint likelihood for these observations, expressed as
+$$
+L(\mathbf{y}, \mathbf{z})=\prod_{i=1}^{n} f\left(\mathbf{y}_{i}, \mathbf{z}_{i} ; \boldsymbol{\mu}_{y}, \boldsymbol{\mu}_{z}, \Sigma\right)
+$$
+where $f(\cdot)$ is a bivariate $T$-dimensional normal distribution with mean vector $\mu=\left(\mu_{y}, \mu_{z}\right)$ and covariance matrix $\Sigma$. We assume that the time-dependent change of the trait studied can be described by a biologically meaningful mathematical function, such as growth equation, or a nonparametric smoothing function. If trait trajectories are different between two environments, parameters that describe the function of trait change should be environment specific. Because the covariance matrix contains longitudinal information, we use an autoregressive model, such as the bivariate first-order structured antedependence (biSAD(1)) model (Zhao et al., 2005), to fit the structure of the covariance, increasing the model's parsimony. Under the null hypothesis that there is no environment-specific difference, i.e., $\mu_{y}=\mu_{z}$, we formulate a second likelihood. The calculated log-likelihood ratio (LR) can be used as a test statistic to test whether trait development is different between two environments.
+
+The bFunMap model is built on the likelihood of phenotypic values at this SNP, expressed as
+$$L_{1}(\mathbf{y}, \mathbf{z})=\prod_{j_{s}=1}^{J_{s}} \prod_{i=1}^{n_{j s}} f_{j_{s}}\left(\mathbf{y}_{i}, \mathbf{z}_{i} ; \boldsymbol{\mu}_{j_{s}}^{y}, \boldsymbol{\mu}_{j_{s}}^{z}, \Sigma\right)$$
+where $f_{j s}(\cdot)$ is a $2 T$-dimensional multivariate normal distribution with mean vector $\mu_{j_{s}}^{y}=\left(\mu_{j_{s}}^{y}\left(t_{1}\right), \ldots, \mu_{j_{s}}^{y}\left(t_{T}\right)\right)$ in environment $\mathrm{X}$ and $\boldsymbol{\mu}_{j_{s}}^{z}=$ $\left(\mu_{j_{s}}^{z}\left(t_{1}\right), \ldots, \mu_{j_{s}}^{z}\left(t_{T}\right) \dagger\right)$ for environment $Y$ and covariance matrix $\Sigma$. Functional mapping models time-specific means in $\mu_{j_{s}}^{y}$ and $\mu_{j_{s}}^{z_{s}}$ by biologically meaningful mathematical equations (e.g., growth equations) that describe the developmental trajectories of the trait expressed in the two environments. To reflect environment-dependent differences, we use two sets of mathematical parameters, each related to trait development in a different environment.
+
+After trait development-related parameters are estimated, we can calculate the genetic standard deviation of a SNP s for the trait at any time point t in environment k (k = X, Y), expressed as
+
+$$
+g_{s}^{k}(t)=\sqrt{\frac{1}{n} \sum_{j_{s}=1}^{J_{s}} n_{j s}\left(\mu_{j_{s}}^{k}(t)\right)^{2}-\left(\frac{1}{n} \sum_{j_{s}=1}^{J_{s}} n_{j_{s}} \mu_{j_{s}}^{k}(t)\right)^{2}}
+$$
+which describes the genetic effect of this SNP on trait development.
+
+
+**see more about how FunMap work on [funmap2](https://github.com/wzhy2000/Funmap2).** 
+
+# 3. biFunClu
+
+biFunClu characterize whether and how a specific locus determines the developmental
+trajectories of the complex trait expressed over environments.
+
+## 3.1 initial parameters 
+
+Prepare initial parameters for biFunClu (**may need to change init_sd_par manually**)
+in this example only use first 100 rows to cluster, larger data set took more time. Use
+`get_init_par()` to acquire 3 import initial parameters for FunClu.
+
 ```{r}
 set.seed(2021) #use same initial value
 
-input <- get_init_par(data = genetic_effect[1:100,],
+input <- get_init_par(data = genetic_effect[1:1000,],
                          k = 5,
-                         legendre_order = 3,
+                         legendre_order = 4,
                          times = 1:14)
+```
 
-c1 <- get_cluster(input = input, itermax = 10)
+View initial parameters to construct biSAD1 Covariance Matrix
+```{r}
+input$init_SAD_par
+```
 
-#plot the result
+Plot initial mean curve for first cluster
+```{r}
+plot( x = seq(1,14), 
+      y = legendre_fit(input$init_curve_par[1,],seq(1,14,)),
+      type = 'l',
+      main="Initial parameters fit for cluster 1", 
+      xlab="Times", 
+      ylab="Genetic Effect")
+
+```
+
+View initial probability for every cluster
+```{r}
+input$init_pro
+```
+
+## 3.2 biFunClu calculation
+```{r}
+c1 <- get_cluster(input = input, itermax = 100)
+```
+
+## 3.3 biFunClu visulation
+```{r, warning=FALSE}
 get_cluster_base_plot(c1$clustered_data[[1]])
 ```
-see more about how FunClu work on [funclu](https://www.genetics.org/content/genetics/180/2/821.full.pdf). 
 
-3.LASSO-based variable selection examples
-=========================================
+## 3.4 BIC
+```{r, warning=FALSE}
+set.seed(2021) 
+
+BIC <- get_BIC(data = genetic_effect[1:1000,], 
+             order = 4,
+             times = 1:14,
+             rep = 3,
+             min_cluster = 2,
+             max_cluster = 6,
+             itermax = 10)
+
+plot(x = BIC$k, y = BIC$BIC,
+     type = 'l',
+     main="BIC", 
+     xlab="k", 
+     ylab="BIC")
+abline( v = BIC$k[which.min(BIC$BIC)],col="red", lwd=3, lty=2)
+```
+
+## 3.5 Theory behind biFunClu
+
+
+To reflect the time-varying pattern of genetic effects, we implement bivariate functional clustering (biFunClu) (Wang et al., 2012 ) to divide all $S$ SNPs into different modules according to how they affect trait development in environment $Y$ and $Z$, described by $\mathbf{g}_{s}^{y}=$ $\left(g_{s}^{y}\left(t_{1}\right), \ldots, g_{s}^{y}\left(t_{T}\right)\right)$ and $\mathbf{g}_{s}^{z}=\left(g_{s}^{z}\left(t_{1}\right), \ldots, g_{s}^{z}\left(t_{T}\right)\right)$, respectively. BFunClu is formulated on the basis of a mixture-based likelihood model, expressed as
+$$
+L_{2}\left(\mathbf{g}_{y}, \mathbf{g}_{z}\right)=\prod_{s=1}^{S} \sum_{l=1}^{L}\left[\pi_{i} f_{l}\left(\mathbf{g}_{s}^{y}, \mathbf{g}_{s}^{z} ; \mathbf{u}_{t}^{y}, \mathbf{u}_{i}^{z}, \Sigma_{g}\right)\right]
+$$
+where $L$ is the number of modules, $\pi_{/}$is a prior probability representing the proportion of module $I$, and $f_{l}(\cdot)$ is the $2 T$-dimensional multivariate normal distribution with mean vector $\mathbf{u}_{1}^{y}=\left(u_{l}^{y}\left(t_{1}\right), \ldots, u_{l}^{y}\left(t_{T}\right)\right)$ for environment $\mathrm{X}$ and $\mathbf{u}_{1}^{z}=\left(u_{l}^{z}\left(t_{1}\right), \ldots, u_{l}^{z}\left(t_{T}\right)\right)$ for environment $Y$ and covariance matrix $\Sigma_{g}$. We implement a LOP-based nonparametric model to fit the structure of $\mathbf{u}_{l}^{y}$ and $\mathbf{u}_{1}^{z}$ and $\mathrm{bSAD}(1)$ to fit the structure of $\Sigma_{g}$.
+
+We develop a hybrid of the EM and simplex algorithms to maximize the likelihood (6). An optimal number of mixture components (i.e., modules) is determined according to $\mathrm{BlC}$. The module (I) to which a specific SNP s belongs can be determined on the basis of the estimate of the posterior probability, expressed as
+$$
+\Pi_{/ s}=\frac{\pi_{l} f_{l}\left(\mathbf{g}_{s}^{y}, \mathbf{g}_{s}^{z} ; \mathbf{u}_{1}^{y}, \mathbf{u}_{1}^{z}, \Sigma_{g}\right)}{\sum_{\prime^{\prime}}^{L} \pi_{\mu} f_{\mu}\left(\mathbf{g}_{s}^{y}, \mathbf{g}_{s}^{z} ; \mathbf{u}_{\mu}^{y}, \mathbf{u}_{\mu}^{z}, \Sigma_{g}\right)}
+$$
+
+A SNP is assigned to a module if the posterior probability of this SNP $\left(\Pi_{/ \mid s}\right)$ within this module is larger than those in any other modules.
+
+**see more about how FunClu work on [Kim et al](https://www.genetics.org/content/genetics/180/2/821.full.pdf).**
+
+# 4.LASSO-based variable selection
+
+FunGraph implements a LASSO-based procedure to choose a small set of the most significant genes that
+links with a given gene across time points. `get_interaction()`return a compound list contain the target
+Module/SNP name, the most relevant Modules/SNPs names and the coefficients.
+
+## 4.1 For Modules
+
 ```{r, warning=FALSE}
 module_data <- get_module_data(data_par = c1$curve_par, times = 1:14)
 
 #select ck data for variable selection
 get_interaction(data = module_data[[1]], col = 1)
 
+```
+
+## 4.2 For SNPs
+
+```{r, warning=FALSE}
 #alternatively, use a cluster data(ck) for variable selection
 get_interaction(data = c1$clustered_data[[1]][,-ncol(c1$clustered_data[[1]])], 
                 col = 1, 
                 reduction = TRUE)
 ```
 
-4.ODE solving examples
-======================
+**Note:** The `reduction = TRUE` option can be `FALSE` if there are no need for dimensionality reduction
+(e.g. the number of SNPs with in module is almost as same as the number of modules, usually less than
+100). 
+
+## 4.3 Theory behind variable selection
+
+We study the following multiple response model:
+$$
+Y=\mathrm{B} X+E
+$$
+where $Y=\left(Y_{1}, \ldots, Y_{M}\right)^{\top} \in \mathrm{R}^{M}$ is the $M$-dimensional response, $X=\left(1, X_{1}, \ldots, X_{p}\right)^{\top}$ is the $(p+1)$ dimensional predictor, $E=\left(\varepsilon_{1}, \ldots, \varepsilon_{M}\right)^{\top} \in R^{M}$ is the $M$-dimensional random error, and $B$ is a coefficient and an $M \times(p+1)$ matrix.
+
+In the first stage, To guarantee that the screened submodel size is under the sample size but still large enough to make a
+statistical inference, we followed **[Fan and Lv](https://www.genetics.org/content/genetics/180/2/821.full.pdf).** when choosing d using the hard threshold d = n/log(n).
+
+In the second stage, the final sparse model is recovered from the screened submodel obtained in the first stage. For this multiple response model, we use the group version of the penalized regression techniques in this stage. More specifically, we consider the following minimization problem:
+$$
+\widehat{\mathbf{B}}_{\lambda}=\operatorname{argmin}_{\mathbf{B} \in \mathcal{R}^{n \times(d+1)}}\left\{\sum_{t=1}^{M} \sum_{i=1}^{n}\left(y_{i t}-x_{i}^{\mathrm{T}} \beta_{t}\right)^{2}+n \sum_{j=1}^{d+1} p_{\lambda}\left(\left\|b_{j}\right\|\right\}\right.
+$$
+where $p_{\lambda}(\cdot)$ is a penalty function and $\lambda$ is the tuning parameter. 
+
+**see more about how LASSO-based variable selection work on [Liu et al](https://onlinelibrary.wiley.com/doi/full/10.1111/tpj.13777).**
+
+# 5. ODE solving
+A system of nLV ODEs are formulated according to evolutionary game theory, with the independent part
+describing the inner genetic effect of SNP i and the dependent part describing the influential genetic
+effect of other SNPs. Thereafter, the genetic network could be reconstructed through the decomposition
+of net genetic effect of each SNP.
+
+## 5.1 Genetic network reconstructed for modules
 ```{r, warning=FALSE}
+#Prepare genetic effect dataset for modules
 module_data <- get_module_data(data_par = c1$curve_par, times = 1:14)
-#for module, just input module data
+#Solve ODE between modules
 module_ode1 <- get_ode_par(data = module_data[[1]],
-                          times = 1:14,
-                          order = 3,
-                          reduction = FALSE,
-                          parallel = FALSE)
+                           times = 1:14,
+                           order = 3,
+                           reduction = FALSE,
+                           parallel = FALSE)
 #the result should be further processed
 module_net1 <- get_all_net(module_ode1)
 ```
 
-take a look at whats going on with 1st and 3rd module(i=1, i=3) of CK data
-```{r}
-get_decomposition_plot(module_ode1,module_net1,1)
-get_decomposition_plot(module_ode1,module_net1,3)
-```
+## 5.2 Plot genetic effect decomposition curves
 
-5.construct network examples
-============================
-write files for Cytoscape
-```{r}
-get_net_output(module_ode1,module_net1,write_data = FALSE)
-```
-see more on how to use [Cytoscape](https://cytoscape.org/). 
-
-or use igraph package for visulation
-```{r}
-#acquire max_effect to control color
-max_effect <- cbind(get_max_effect(module_net1),get_max_effect(module_net1))
-network_plot(k = module_net1,
-             title = 'CK',
-             max_effect = max_effect,
-             save_plot = FALSE)
-```
-
-construct network for module 1 (CK)
 ```{r, warning=FALSE}
-m1_ck <- get_subset_data(data = c1$clustered_data[[1]], cluster = 1)
-m1_ck_ode <- get_ode_par(data = m1_ck, times = 1:14, order = 3, reduction = TRUE, parallel = FALSE)
-m1_ck_net <- get_all_net(m1_ck_ode)
+get_decomposition_plot(module_ode1,module_net1,1)
+```
 
+## 5.3 Network visualization between modules
+
+```{r, fig.height=6, fig.width=7, warning=FALSE}
+#max_effect control the overall plot colour (eg. ck and stress network)
+max_effect <- cbind(get_max_effect(module_net1),get_max_effect(module_net1))
+
+network_plot(k = module_net1, title = 'CK', max_effect = max_effect, save_plot = FALSE)
+```
+
+## 5.4 Genetic network reconstructed for SNPs
+```{r, message=FALSE, warning=FALSE}
+m1_ck <- get_subset_data(data = c1$clustered_data[[1]], cluster = 1 )
+m1_ck_ode <- get_ode_par(data = m1_ck, times = 1:14, order = 3, reduction = TRUE, parallel = TRUE)
+m1_ck_net <- get_all_net(m1_ck_ode)
+get_decomposition_plot(m1_ck_ode,m1_ck_net,2)
+```
+
+## 5.5 Network visualization between SNPs
+```{r, fig.height=6, fig.width=7, warning=FALSE}
 max_effect <- cbind(get_max_effect(m1_ck_net),get_max_effect(m1_ck_net))
 
 network_plot(k = m1_ck_net, title = 'Module1_CK', max_effect = max_effect, save_plot = FALSE)
 ```
+
+## 5.6 Theory behind nLV-based ordinary differential equation (ODE)
+
+Let $\mathbf{g}_{s}^{y}=\left(g_{s}^{y}\left(t_{1}\right), \ldots, g_{s}^{y}\left(t_{T}\right)\right)$ and $\mathbf{g}_{s}^{z}=\left(g_{s}^{z}\left(t_{1}\right), \ldots, g_{s}^{z}\left(t_{T}\right)\right)$ denote two vectors of the overall genetic effect of SNP s on trait development in environments $X$ and $Y$, respectively. According to evolutionary game theory, we decompose the net genetic effect of a SNP into its independent effect component and dependent effect component, which is described by an $n L V$-based ordinary differential equation (ODE), i.e.,
+$$
+g_{s}^{k}(t)=Q_{s}^{k}\left(g_{s}^{k}(t) ; \Theta_{s}^{k}\right)+\sum_{s^{\prime}=1, s^{\prime} \neq s}^{s} Q_{s s^{\prime}}^{k}\left(g_{s^{\prime}}^{k}(t) ; \Theta_{s s^{\prime}}^{k}\right)
+$$
+
+where $g_{s}^{k}(t)$ is the derivative of the net genetic effect of SNP s on trait development at time $t$ in environment $k, Q_{s}^{k}(\cdot)$ is a time-varying function that characterizes the independent genetic effect of SNP s that occurs when it is assumed to be in isolation, $Q_{s s^{\prime}}^{k}(\cdot)$ is a timevarying function that characterizes the dependent genetic effect of SNP s that arises from the influence of another SNP s' on it, and $\Theta_{s}^{k}$ and $\Theta_{s s^{\prime}}^{k}$ are a set of parameters that fit the independent and dependent functions, respectively. Since both time-varying independent and dependent effects do not follow an explicit equation, we implement a nonparametric smoothing approach, such as Legendre Orthogonal Polynomials (LOP).
+
+# 6.Multilayer interactome networks Construction
+
+The salient feature of FunGraph is to organize hundreds of thousands or thousands of thousands of SNPs
+in a GWAS into a multilayer interaction network by classifying these SNPs into distinct modules. 
+
+## 6.1 Choose target module to further classify into submodules
+
+Generally, a module that contains more than 500 SNPs is difficult for network visualization and should
+be further classified.
+```{r}
+table(c1$clustered_data[[1]]$cluster)
+```
+
+## 6.2 biFunClu for the target module
+
+Select cluster = 1 in previous results
+```{r, warning=FALSE}
+m1 <- cbind(get_subset_data(data = c1$clustered_data[[1]], cluster = 1 ),
+             get_subset_data(data = c1$clustered_data[[2]], cluster = 1 ))
+
+set.seed(2021) #use same initial value
+input2 <- get_init_par(data = m1, k = 4, legendre_order = 4, times = 1:14)
+c2 <- get_cluster(input = input2)
+#view stress data
+get_cluster_base_plot(c2$clustered_data[[2]])
+
+table(c2$clustered_data[[2]]$cluster)
+```
+
+## 6.3 Network construction between submodules
+
+For a target module,ODE solving can be easily done similary to section 5
+```{r, message=FALSE, warning=FALSE}
+submodule1_data <- get_module_data(data_par = c2$curve_par, times = 1:14)
+submodule1_ode1 <- get_ode_par(data = submodule1_data[[1]],
+                               times = 1:14,
+                               order = 3,
+                               reduction = FALSE,
+                               parallel = TRUE)
+submodule1_net1 <- get_all_net(submodule1_ode1)
+max_effect1 <- cbind(get_max_effect(submodule1_net1),get_max_effect(submodule1_net1))
+```
+
+Network visualization
+```{r, fig.height=6, fig.width=7}
+network_plot(k = submodule1_net1, title = "Submodule1_CK", max_effect = max_effect1, save_plot = FALSE)
+```
+
+## 6.4 Network construction within submodules
+
+Then subnetwork within submodule can be constructed
+```{r, message=FALSE, warning=FALSE}
+
+m1_1_ck <- get_subset_data(data = c2$clustered_data[[1]], cluster = 2)
+m1_1_ck_ode <- get_ode_par(data = m1_1_ck, times = 1:14, order = 3, reduction = TRUE, parallel = TRUE)
+m1_1_ck_net <- get_all_net(m1_1_ck_ode)
+max_effect2 <- cbind(get_max_effect(m1_1_ck_net),get_max_effect(m1_1_ck_net))
+```
+
+Network visualization
+```{r, fig.height=6, fig.width=7}
+network_plot(k = m1_1_ck_net, title = "Submodule1_1_CK", 
+             max_effect = max_effect2, save_plot = FALSE)
+```
+
+# Troubleshooting
+
+### singular gradient/ initial value in 'vmmin' is not finite/ non-finite value supplied by optim.
+
+Potential solution: 
+Usually it was caused by redundant information in dataset, just remove non-numeric content in datasets. 
+Alternatively, column names of input dataset contain underscore, hash, dash and so on may results
+failure in matching column names in `get_ode_par()` function.  
+Another possible solution is to try different value for initial parameters, generally initial parameters
+for biSAD covariance matrix should between 0.1 to 10, and initial parameters for model logistic growth
+curve should be 0.1 to maximum observation phenotypic data.
+
+
+### The calculation took too much time and/or estimated parameters are inaccurate.
+
+Potential solution: 
+Parameters estimation for biFunMap and biFunClu can be improved through the manually given determinant
+and inverse for biSAD1 covariance matrix than the implanted `solve()` and `det()` functions in R, but it
+would be challenging and time consuming.
+
+
+### The optimal number of k is difficult to choose.
+
+Potential solution: 
+The initial parameters were randomly given and may influent the outcome of BIC value depending on the
+dataset, for a certain k it is recommended to run several times and choose the minimal BIC value as 
+the actual BIC value.
+
+
+### Calculation stopped when running `get_ode_par()`.
+
+Potential solution: 
+In the rare case that no connection can be found between target module/SNP and the rest dataset,
+get_interaction function would return with missing values NA. Users can either manually assign a most
+relevant dataset by `cor()`, or skip this module/SNP
+
+
+### The intrinsic growth curves of certain genetic effect may not be positive.
+
+Potential solution: 
+Try different ODE initial values in `get_value()` funciton, regularization in estimating ODE parameters
+by modify ode_optimize function in source R code should also be a potential solution.
+
+
+# Session info
+
+```{r sessionInfo}
+sessionInfo()
+```
+
