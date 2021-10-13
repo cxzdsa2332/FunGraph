@@ -4,10 +4,12 @@
 \alias{get_cluster_base_plot}
 \title{plot cluster result base plot}
 \usage{
-get_cluster_base_plot(clustered_data)
+get_cluster_base_plot(clustered_data, alpha = 1)
 }
 \arguments{
 \item{clustered_data}{clustered data with rownames in first column}
+
+\item{alpha}{scalar control transparency}
 }
 \value{
 a plot
